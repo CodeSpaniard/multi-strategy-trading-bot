@@ -1,0 +1,25 @@
+paper_mode: false
+
+symbols:
+  - SPY
+  - QQQ
+  - IWM
+  - SMH
+  - TSLA
+  - AAPL
+
+strategy:
+  mode: breakout     # leave LIVE on momentum until user explicitly approves switching
+  lookback_minutes: 20
+  momentum_threshold_pct: 0.3
+  take_profit_pct: 0.5
+  stop_loss_pct: 0.3
+  trailing_stop_pct: 0.2
+
+risk:
+  max_position_usd: 25
+  daily_loss_limit_usd: 15
+  max_trades_per_day: 3
+
+loop:
+  poll_seconds: 60

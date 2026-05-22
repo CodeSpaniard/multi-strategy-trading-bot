@@ -1,0 +1,29 @@
+paper_mode: true
+asset_class: equity
+
+scanner:
+  dip_threshold_pct: 5.0
+  bounce_ratio: 0.40
+  min_bounce_pct: 2.0
+  scan_time_minutes_before_close: 10
+
+strategy:
+  hard_stop_pct: 8.0
+  trailing_stop_pct: 5.0
+
+risk:
+  daily_loss_limit_usd: 500
+  max_positions: 5
+
+sizing:
+  enabled: true
+  divisor: 5
+  training_wheel_cap_usd: 250   # paper cap scaled up for meaningful comparison
+  training_wheel_trades: 20
+  max_growth_ratio: 1.5
+  dd_threshold_pct: 10.0
+  dd_lookback_days: 7
+  freeze_days: 7
+
+loop:
+  monitor_poll_seconds: 60

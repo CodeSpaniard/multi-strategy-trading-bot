@@ -1,0 +1,29 @@
+paper_mode: false
+asset_class: equity
+
+scanner:
+  dip_threshold_pct: 5.0
+  bounce_ratio: 0.40
+  min_bounce_pct: 2.0
+  scan_time_minutes_before_close: 10
+
+strategy:
+  hard_stop_pct: 8.0
+  trailing_stop_pct: 5.0
+
+risk:
+  daily_loss_limit_usd: 15
+  max_positions: 5
+
+sizing:
+  enabled: true               # master kill switch for automated sizing
+  divisor: 5                  # per-trade size = equity / 5
+  training_wheel_cap_usd: 50  # hard ceiling for first N closed trades
+  training_wheel_trades: 20
+  max_growth_ratio: 1.5       # new size <= prior size * this
+  dd_threshold_pct: 10.0      # 7-day peak-to-trough DD that triggers freeze
+  dd_lookback_days: 7
+  freeze_days: 7
+
+loop:
+  monitor_poll_seconds: 60
