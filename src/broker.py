@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timedelta
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import MarketOrderRequest
-from alpaca.trading.enums import OrderSide, TimeInForce
+from alpaca.trading.enums import OrderSide, OrderStatus, TimeInForce
 from alpaca.data.enums import DataFeed
 from alpaca.data.historical import StockHistoricalDataClient, CryptoHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest, CryptoBarsRequest
@@ -143,6 +143,18 @@ class Broker:
             bars = bars.xs(symbol, level="symbol")
         return bars.tail(days)
 
+    def _check_order_accepted(self, order, action: str, symbol: str):
+        """Raise BrokerError if order came back rejected.
+
+        Alpaca's submit/close can succeed at HTTP level but return an order
+        with status='rejected'. Caller state must not advance on rejection.
+        Mirrors the Coinbase silent-rejection guard.
+        """
+        status = getattr(order, "status", None)
+        if status == OrderStatus.REJECTED:
+            reason = getattr(order, "failed_at", None) or "<no detail>"
+            raise BrokerError(f"{action} {symbol} REJECTED by Alpaca (failed_at={reason})")
+
     def buy_notional(self, symbol: str, usd: float):
         tsym = self._trading_symbol(symbol)
         tif = TimeInForce.GTC if self.asset_class == "crypto" else TimeInForce.DAY
@@ -153,16 +165,20 @@ class Broker:
             time_in_force=tif,
         )
         try:
-            return self.trading.submit_order(order)
+            result = self.trading.submit_order(order)
         except Exception as e:
             raise BrokerError(f"buy_notional({symbol}, ${usd}) failed: {e}") from e
+        self._check_order_accepted(result, "BUY", symbol)
+        return result
 
     def close_position(self, symbol: str):
         tsym = self._trading_symbol(symbol)
         try:
-            return self.trading.close_position(tsym)
+            result = self.trading.close_position(tsym)
         except Exception as e:
             raise BrokerError(f"close_position({symbol}) failed: {e}") from e
+        self._check_order_accepted(result, "SELL", symbol)
+        return result
 
     def flatten_all(self):
         try:
