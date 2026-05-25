@@ -17,8 +17,9 @@ from dotenv import load_dotenv
 
 from src.coinbase_broker import CoinbaseBroker, CoinbaseBrokerError
 from src.daily_summary import write_crypto_summary
+from src.healthcheck import ping_healthcheck
 from src.logger import get_logger, state_path as state_path_for
-from src.notifier import notify_buy, notify_sell, notify_freeze
+from src.notifier import notify_buy, notify_sell, notify_freeze, notify_error
 from src.sizer import SizerConfig, decide_size
 from src.trend_strategy import TrendStrategy
 
@@ -151,6 +152,8 @@ def main():
 
     while True:
         try:
+            log.info(f"[{log_name}] HEARTBEAT")
+            ping_healthcheck()
             # Sample equity each cycle (crypto polls hourly, so once per hour is fine)
             now = datetime.now()
             try:
@@ -270,6 +273,7 @@ def main():
             time.sleep(poll)
         except Exception as e:
             log.exception(f"[{log_name}] Unexpected error: {e}")
+            notify_error(log_name, f"Unexpected error: {e}")
             time.sleep(poll)
 
 
