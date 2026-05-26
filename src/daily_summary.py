@@ -10,6 +10,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 
+from src.emailer import send_email
 from src.logger import SUMMARY_LOG
 
 SUMMARY_FILE = Path(SUMMARY_LOG)
@@ -52,6 +53,11 @@ def write_scanner_summary(bot: str, equity: float, positions: dict,
     with SUMMARY_FILE.open("a") as f:
         f.write(line)
 
+    send_email(
+        subject=f"[trading-bot] {bot} daily summary — {today.isoformat()} — eq ${equity:,.2f}",
+        body=line,
+    )
+
 
 def write_crypto_summary(bot: str, equity: float,
                          positions: dict, ma_states: dict,
@@ -72,3 +78,8 @@ def write_crypto_summary(bot: str, equity: float,
     )
     with SUMMARY_FILE.open("a") as f:
         f.write(line)
+
+    send_email(
+        subject=f"[trading-bot] {bot} daily summary — {today.isoformat()} — eq ${equity:,.2f}",
+        body=line,
+    )
