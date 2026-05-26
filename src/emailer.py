@@ -1,29 +1,32 @@
-"""SMTP email transport for daily summaries.
+"""HTTPS email transport for daily summaries via Resend.
+
+Resend is used instead of SMTP because DigitalOcean blocks outbound
+SMTP ports (25, 465, 587) on droplets as an anti-spam measure.
+Resend's HTTPS API is not subject to that block.
 
 Failures are logged at WARNING and swallowed — daily summaries are
-informational, so SMTP problems should not cascade into runtime
-errors or Pushover noise. The file write in daily_summary.py is the
-durable record; email is the delivery layer.
+informational, so transport problems should not cascade into
+runtime errors or Pushover noise. The file write in daily_summary.py
+is the durable record; email is the delivery layer.
 
 Reads from env:
-  SMTP_HOST           (default: smtp.gmail.com)
-  SMTP_PORT           (default: 587)
-  SMTP_USERNAME       (required)
-  SMTP_APP_PASSWORD   (required; Gmail App Password — not regular password)
+  RESEND_API_KEY      (required; starts with re_)
   SUMMARY_EMAIL_TO    (default for to_address if not provided)
-  SUMMARY_EMAIL_FROM  (default for from_address; falls back to SMTP_USERNAME)
+  SUMMARY_EMAIL_FROM  (default for from_address; falls back to
+                       onboarding@resend.dev)
 """
+import json
 import logging
 import os
-import smtplib
-from email.mime.text import MIMEText
+import urllib.error
+import urllib.request
 from typing import Optional
 
 log = logging.getLogger(__name__)
 
-_DEFAULT_SMTP_HOST = "smtp.gmail.com"
-_DEFAULT_SMTP_PORT = 587
-_SMTP_TIMEOUT_S = 15
+_RESEND_ENDPOINT = "https://api.resend.com/emails"
+_HTTP_TIMEOUT_S = 15
+_DEFAULT_FROM = "onboarding@resend.dev"
 
 
 def send_email(
@@ -32,37 +35,52 @@ def send_email(
     to_address: Optional[str] = None,
     from_address: Optional[str] = None,
 ) -> bool:
-    """Send a plaintext email via SMTP+STARTTLS.
+    """Send a plaintext email via the Resend HTTPS API.
 
     Returns True on success, False on any failure. Never raises.
     """
-    smtp_host = os.environ.get("SMTP_HOST", _DEFAULT_SMTP_HOST)
-    smtp_port = int(os.environ.get("SMTP_PORT", _DEFAULT_SMTP_PORT))
-    smtp_user = os.environ.get("SMTP_USERNAME")
-    smtp_pass = os.environ.get("SMTP_APP_PASSWORD")
-
+    api_key = os.environ.get("RESEND_API_KEY")
     to_addr = to_address or os.environ.get("SUMMARY_EMAIL_TO")
-    from_addr = from_address or os.environ.get("SUMMARY_EMAIL_FROM") or smtp_user
+    from_addr = from_address or os.environ.get("SUMMARY_EMAIL_FROM") or _DEFAULT_FROM
 
-    if not smtp_user or not smtp_pass:
-        log.warning("send_email: SMTP_USERNAME or SMTP_APP_PASSWORD not set; skipping")
+    if not api_key:
+        log.warning("send_email: RESEND_API_KEY not set; skipping")
         return False
 
     if not to_addr:
         log.warning("send_email: no recipient (SUMMARY_EMAIL_TO not set and to_address not provided); skipping")
         return False
 
-    msg = MIMEText(body, "plain", "utf-8")
-    msg["Subject"] = subject
-    msg["From"] = from_addr
-    msg["To"] = to_addr
+    payload = json.dumps({
+        "from": from_addr,
+        "to": [to_addr],
+        "subject": subject,
+        "text": body,
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        _RESEND_ENDPOINT,
+        data=payload,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+    )
 
     try:
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=_SMTP_TIMEOUT_S) as server:
-            server.starttls()
-            server.login(smtp_user, smtp_pass)
-            server.send_message(msg)
-        return True
+        with urllib.request.urlopen(req, timeout=_HTTP_TIMEOUT_S) as resp:
+            if 200 <= resp.status < 300:
+                return True
+            log.warning(f"send_email: unexpected status {resp.status}")
+            return False
+    except urllib.error.HTTPError as e:
+        try:
+            err_body = e.read().decode("utf-8", errors="replace")[:200]
+        except Exception:
+            err_body = "<no body>"
+        log.warning(f"send_email failed: HTTP {e.code}: {err_body}")
+        return False
     except Exception as e:
         log.warning(f"send_email failed: {e}")
         return False
