@@ -1,0 +1,93 @@
+{
+  "generated_utc": "2026-06-15T02:46:33Z",
+  "study": "Multi-year funding regime study (basis-trade data-confidence gate)",
+  "roll_window_days": 7,
+  "thresholds_annualized_pct": [
+    10,
+    15,
+    20
+  ],
+  "caveats": [
+    "HL/Coinbase-Intl fund hourly vs Coinbase Advanced US 8h",
+    "Coinbase International != Coinbase Advanced US (same firm, offshore entity)",
+    "rolling-window regime def; gate persistence spec still open"
+  ],
+  "results": {
+    "hyperliquid": {
+      "BTC": {
+        "period_start": "2023-06-16",
+        "period_end": "2026-06-15",
+        "periods": 26275,
+        "mean_annualized_pct": 15.01,
+        "pct_periods_positive": 87.0,
+        "cumulative_carry_pct": 45.02,
+        "thresholds": {
+          "10pct": {
+            "pct_of_time_above": 56.1,
+            "n_windows": 28,
+            "median_window_days": 9.6,
+            "max_window_days": 126.2,
+            "share_of_total_carry_pct": 87.5
+          },
+          "15pct": {
+            "pct_of_time_above": 31.9,
+            "n_windows": 18,
+            "median_window_days": 13.5,
+            "max_window_days": 70.5,
+            "share_of_total_carry_pct": 67.9
+          },
+          "20pct": {
+            "pct_of_time_above": 24.1,
+            "n_windows": 16,
+            "median_window_days": 16.0,
+            "max_window_days": 44.4,
+            "share_of_total_carry_pct": 58.4
+          }
+        }
+      },
+      "ETH": {
+        "period_start": "2023-06-16",
+        "period_end": "2026-06-15",
+        "periods": 26275,
+        "mean_annualized_pct": 14.91,
+        "pct_periods_positive": 86.1,
+        "cumulative_carry_pct": 44.73,
+        "thresholds": {
+          "10pct": {
+            "pct_of_time_above": 46.9,
+            "n_windows": 33,
+            "median_window_days": 8.8,
+            "max_window_days": 97.9,
+            "share_of_total_carry_pct": 82.0
+          },
+          "15pct": {
+            "pct_of_time_above": 30.5,
+            "n_windows": 15,
+            "median_window_days": 7.9,
+            "max_window_days": 89.3,
+            "share_of_total_carry_pct": 69.3
+          },
+          "20pct": {
+            "pct_of_time_above": 24.1,
+            "n_windows": 14,
+            "median_window_days": 17.3,
+            "max_window_days": 54.1,
+            "share_of_total_carry_pct": 62.0
+          }
+        }
+      }
+    },
+    "venue_crosscheck": {
+      "BTC": {
+        "hyperliquid": 2.49,
+        "coinbase_intl": 0.99,
+        "okx": 1.57
+      },
+      "ETH": {
+        "hyperliquid": 3.8,
+        "coinbase_intl": 0.83,
+        "okx": 2.12
+      }
+    }
+  }
+}

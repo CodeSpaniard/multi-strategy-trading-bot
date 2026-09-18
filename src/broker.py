@@ -5,12 +5,20 @@ from datetime import datetime, timedelta
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import MarketOrderRequest
 from alpaca.trading.enums import OrderSide, OrderStatus, TimeInForce
-from alpaca.data.enums import DataFeed
+from alpaca.data.enums import DataFeed, Adjustment
 from alpaca.data.historical import StockHistoricalDataClient, CryptoHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest, CryptoBarsRequest
 from alpaca.data.timeframe import TimeFrame
 
+from src.fill import FillResult
+
 log = logging.getLogger(__name__)
+
+_TERMINAL_FAIL_STATUSES = (
+    OrderStatus.REJECTED, OrderStatus.CANCELED, OrderStatus.EXPIRED,
+    OrderStatus.DONE_FOR_DAY, OrderStatus.REPLACED, OrderStatus.STOPPED,
+    OrderStatus.SUSPENDED, OrderStatus.CALCULATED,
+)
 
 
 def _retry(fn, retries: int = 2, delay_s: float = 2.0, label: str = ""):
@@ -34,13 +42,15 @@ class BrokerError(Exception):
 
 
 class Broker:
-    def __init__(self, paper: bool = True, asset_class: str = "equity", request_timeout_s: float = 10.0):
+    def __init__(self, paper: bool = True, asset_class: str = "equity",
+                 request_timeout_s: float = 10.0, fill_timeout_s: float = 10.0):
         if asset_class not in ("equity", "crypto"):
             raise ValueError(f"asset_class must be 'equity' or 'crypto', got {asset_class!r}")
         api_key = os.environ["ALPACA_API_KEY"]
         secret = os.environ["ALPACA_SECRET_KEY"]
         self.paper = paper
         self.asset_class = asset_class
+        self.fill_timeout_s = fill_timeout_s
         self.trading = TradingClient(api_key, secret, paper=paper)
         if asset_class == "crypto":
             self.data = CryptoHistoricalDataClient()
@@ -129,9 +139,12 @@ class Broker:
                 raise BrokerError(f"daily_bars({symbol}) failed: {e}") from e
         else:
             # Use IEX (free) feed explicitly — SIP requires paid subscription.
+            # adjustment=ALL → split/dividend-adjusted; without it a split (e.g. NVDA
+            # 10:1) reads as a phantom ~-90% day-over-day "dip" and triggers a bad buy.
             req = StockBarsRequest(
                 symbol_or_symbols=symbol, timeframe=TimeFrame.Day,
                 start=start, end=end, feed=DataFeed.IEX,
+                adjustment=Adjustment.ALL,
             )
             try:
                 bars = self.data.get_stock_bars(req).df
@@ -155,7 +168,52 @@ class Broker:
             reason = getattr(order, "failed_at", None) or "<no detail>"
             raise BrokerError(f"{action} {symbol} REJECTED by Alpaca (failed_at={reason})")
 
-    def buy_notional(self, symbol: str, usd: float):
+    def _wait_for_fill(self, order, action: str, symbol: str) -> FillResult:
+        """Poll order status until terminal or fill_timeout_s elapses.
+
+        Terminal outcomes:
+          FILLED                                  → FillResult(fully_filled=True)
+          REJECTED / CANCELED / EXPIRED           → BrokerError
+          Partial fill present at timeout         → FillResult(fully_filled=False) + WARN
+          Still pending with no fill at timeout   → BrokerError("fill timeout")
+        """
+        order_id = str(getattr(order, "id", "") or "")
+        if not order_id:
+            raise BrokerError(f"{action} {symbol}: order has no id; cannot verify fill")
+
+        poll_interval_s = 1.0
+        deadline = time.monotonic() + self.fill_timeout_s
+        cur = order
+
+        while True:
+            status = getattr(cur, "status", None)
+            if status == OrderStatus.FILLED:
+                price = float(getattr(cur, "filled_avg_price", 0) or 0)
+                qty = float(getattr(cur, "filled_qty", 0) or 0)
+                return FillResult(fill_price=price, filled_qty=qty, fully_filled=True, order_id=order_id)
+            if status in _TERMINAL_FAIL_STATUSES:
+                raise BrokerError(f"{action} {symbol} ended in status={status} (order_id={order_id})")
+            if time.monotonic() >= deadline:
+                filled_qty = float(getattr(cur, "filled_qty", 0) or 0)
+                if filled_qty > 0:
+                    price = float(getattr(cur, "filled_avg_price", 0) or 0)
+                    log.warning(
+                        f"{action} {symbol} PARTIAL FILL at timeout: qty={filled_qty} "
+                        f"px={price} status={status} (order_id={order_id})"
+                    )
+                    return FillResult(fill_price=price, filled_qty=filled_qty,
+                                      fully_filled=False, order_id=order_id)
+                raise BrokerError(
+                    f"{action} {symbol} fill timeout after {self.fill_timeout_s}s "
+                    f"(status={status}, order_id={order_id})"
+                )
+            time.sleep(poll_interval_s)
+            try:
+                cur = self.trading.get_order_by_id(order_id)
+            except Exception as e:
+                raise BrokerError(f"{action} {symbol} poll get_order failed: {e}") from e
+
+    def buy_notional(self, symbol: str, usd: float) -> FillResult:
         tsym = self._trading_symbol(symbol)
         tif = TimeInForce.GTC if self.asset_class == "crypto" else TimeInForce.DAY
         order = MarketOrderRequest(
@@ -169,16 +227,16 @@ class Broker:
         except Exception as e:
             raise BrokerError(f"buy_notional({symbol}, ${usd}) failed: {e}") from e
         self._check_order_accepted(result, "BUY", symbol)
-        return result
+        return self._wait_for_fill(result, "BUY", symbol)
 
-    def close_position(self, symbol: str):
+    def close_position(self, symbol: str) -> FillResult:
         tsym = self._trading_symbol(symbol)
         try:
             result = self.trading.close_position(tsym)
         except Exception as e:
             raise BrokerError(f"close_position({symbol}) failed: {e}") from e
         self._check_order_accepted(result, "SELL", symbol)
-        return result
+        return self._wait_for_fill(result, "SELL", symbol)
 
     def flatten_all(self):
         try:

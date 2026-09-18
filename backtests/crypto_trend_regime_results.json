@@ -1,0 +1,175 @@
+{
+  "generated_utc": "2026-06-07T04:19:39Z",
+  "regime_ma": 200,
+  "lookback_days": 1100,
+  "results": {
+    "BTC-USD": {
+      "baseline": {
+        "trades": 7,
+        "skipped_by_filter": 0,
+        "wins": 3,
+        "losses": 4,
+        "win_rate_pct": 42.9,
+        "take_profit_wins": 2,
+        "total_net_pnl_pct": 50.01,
+        "best_trade_pct": 40.84,
+        "worst_trade_pct": -14.69,
+        "max_drawdown_pct": -37.3,
+        "trade_log": [
+          {
+            "entry": "2023-10-20",
+            "exit": "2023-12-04",
+            "net_pnl_pct": 40.84,
+            "reason": "take-profit"
+          },
+          {
+            "entry": "2024-05-21",
+            "exit": "2024-06-24",
+            "net_pnl_pct": -14.69,
+            "reason": "trailing-stop"
+          },
+          {
+            "entry": "2024-07-30",
+            "exit": "2024-08-04",
+            "net_pnl_pct": -12.75,
+            "reason": "trailing-stop"
+          },
+          {
+            "entry": "2024-09-28",
+            "exit": "2024-11-19",
+            "net_pnl_pct": 39.75,
+            "reason": "take-profit"
+          },
+          {
+            "entry": "2025-05-03",
+            "exit": "2025-08-29",
+            "net_pnl_pct": 12.46,
+            "reason": "trailing-stop"
+          },
+          {
+            "entry": "2025-09-19",
+            "exit": "2025-10-16",
+            "net_pnl_pct": -7.08,
+            "reason": "trailing-stop"
+          },
+          {
+            "entry": "2026-04-24",
+            "exit": "2026-06-01",
+            "net_pnl_pct": -8.54,
+            "reason": "trailing-stop"
+          }
+        ]
+      },
+      "filtered": {
+        "trades": 5,
+        "skipped_by_filter": 1,
+        "wins": 2,
+        "losses": 3,
+        "win_rate_pct": 40.0,
+        "take_profit_wins": 1,
+        "total_net_pnl_pct": 17.7,
+        "best_trade_pct": 39.75,
+        "worst_trade_pct": -14.69,
+        "max_drawdown_pct": -37.3,
+        "trade_log": [
+          {
+            "entry": "2024-05-21",
+            "exit": "2024-06-24",
+            "net_pnl_pct": -14.69,
+            "reason": "trailing-stop"
+          },
+          {
+            "entry": "2024-07-30",
+            "exit": "2024-08-04",
+            "net_pnl_pct": -12.75,
+            "reason": "trailing-stop"
+          },
+          {
+            "entry": "2024-09-28",
+            "exit": "2024-11-19",
+            "net_pnl_pct": 39.75,
+            "reason": "take-profit"
+          },
+          {
+            "entry": "2025-05-03",
+            "exit": "2025-08-29",
+            "net_pnl_pct": 12.46,
+            "reason": "trailing-stop"
+          },
+          {
+            "entry": "2025-09-19",
+            "exit": "2025-10-16",
+            "net_pnl_pct": -7.08,
+            "reason": "trailing-stop"
+          }
+        ]
+      }
+    },
+    "ETH-USD": {
+      "baseline": {
+        "trades": 5,
+        "skipped_by_filter": 0,
+        "wins": 2,
+        "losses": 3,
+        "win_rate_pct": 40.0,
+        "take_profit_wins": 2,
+        "total_net_pnl_pct": 53.99,
+        "best_trade_pct": 42.89,
+        "worst_trade_pct": -12.08,
+        "max_drawdown_pct": -28.81,
+        "trade_log": [
+          {
+            "entry": "2023-11-02",
+            "exit": "2024-01-10",
+            "net_pnl_pct": 42.89,
+            "reason": "take-profit"
+          },
+          {
+            "entry": "2024-05-29",
+            "exit": "2024-06-24",
+            "net_pnl_pct": -11.54,
+            "reason": "trailing-stop"
+          },
+          {
+            "entry": "2024-11-06",
+            "exit": "2024-12-04",
+            "net_pnl_pct": 40.48,
+            "reason": "take-profit"
+          },
+          {
+            "entry": "2025-05-16",
+            "exit": "2025-06-20",
+            "net_pnl_pct": -5.75,
+            "reason": "trailing-stop"
+          },
+          {
+            "entry": "2026-04-23",
+            "exit": "2026-05-22",
+            "net_pnl_pct": -12.08,
+            "reason": "trailing-stop"
+          }
+        ]
+      },
+      "filtered": {
+        "trades": 1,
+        "skipped_by_filter": 3,
+        "wins": 0,
+        "losses": 1,
+        "win_rate_pct": 0.0,
+        "take_profit_wins": 0,
+        "total_net_pnl_pct": -11.54,
+        "best_trade_pct": -11.54,
+        "worst_trade_pct": -11.54,
+        "max_drawdown_pct": -14.32,
+        "trade_log": [
+          {
+            "entry": "2024-05-29",
+            "exit": "2024-06-24",
+            "net_pnl_pct": -11.54,
+            "reason": "trailing-stop"
+          }
+        ]
+      }
+    }
+  }
+}

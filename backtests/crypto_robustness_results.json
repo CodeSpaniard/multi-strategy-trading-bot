@@ -1,0 +1,240 @@
+{
+  "generated_utc": "2026-06-15T01:15:31Z",
+  "study": "Robustness/perturbation test of live crypto SMA 20/100 config",
+  "live_config": {
+    "ma_fast": 20,
+    "ma_slow": 100,
+    "cost_bps": 60,
+    "take_profit_pct": 40,
+    "stop_loss_pct": 15,
+    "trailing_stop_pct": 12
+  },
+  "lookback_days": 1100,
+  "results": {
+    "grid": {
+      "BTC-USD": {
+        "15/80": {
+          "net": 32.81,
+          "trades": 9,
+          "maxdd": -49.49
+        },
+        "15/100": {
+          "net": 50.89,
+          "trades": 8,
+          "maxdd": -39.55
+        },
+        "15/120": {
+          "net": 61.84,
+          "trades": 6,
+          "maxdd": -31.78
+        },
+        "20/80": {
+          "net": 73.83,
+          "trades": 9,
+          "maxdd": -48.39
+        },
+        "20/100": {
+          "net": 50.01,
+          "trades": 7,
+          "maxdd": -37.3
+        },
+        "20/120": {
+          "net": 70.75,
+          "trades": 5,
+          "maxdd": -23.56
+        },
+        "25/80": {
+          "net": 54.78,
+          "trades": 7,
+          "maxdd": -47.51
+        },
+        "25/100": {
+          "net": 72.83,
+          "trades": 7,
+          "maxdd": -35.52
+        },
+        "25/120": {
+          "net": 58.04,
+          "trades": 4,
+          "maxdd": -24.94
+        }
+      },
+      "ETH-USD": {
+        "15/80": {
+          "net": 45.84,
+          "trades": 6,
+          "maxdd": -43.45
+        },
+        "15/100": {
+          "net": 21.58,
+          "trades": 6,
+          "maxdd": -40.93
+        },
+        "15/120": {
+          "net": 11.46,
+          "trades": 6,
+          "maxdd": -33.79
+        },
+        "20/80": {
+          "net": 44.98,
+          "trades": 6,
+          "maxdd": -42.99
+        },
+        "20/100": {
+          "net": 53.99,
+          "trades": 5,
+          "maxdd": -28.81
+        },
+        "20/120": {
+          "net": 10.09,
+          "trades": 6,
+          "maxdd": -35.28
+        },
+        "25/80": {
+          "net": 31.26,
+          "trades": 7,
+          "maxdd": -42.52
+        },
+        "25/100": {
+          "net": 52.24,
+          "trades": 5,
+          "maxdd": -28.64
+        },
+        "25/120": {
+          "net": -7.47,
+          "trades": 5,
+          "maxdd": -46.3
+        }
+      }
+    },
+    "cost": {
+      "30": {
+        "aggregate_net": 107.6,
+        "per_symbol": {
+          "BTC-USD": {
+            "net": 52.11,
+            "trades": 7,
+            "maxdd": -36.7
+          },
+          "ETH-USD": {
+            "net": 55.49,
+            "trades": 5,
+            "maxdd": -28.21
+          }
+        }
+      },
+      "60": {
+        "aggregate_net": 104.0,
+        "per_symbol": {
+          "BTC-USD": {
+            "net": 50.01,
+            "trades": 7,
+            "maxdd": -37.3
+          },
+          "ETH-USD": {
+            "net": 53.99,
+            "trades": 5,
+            "maxdd": -28.81
+          }
+        }
+      },
+      "90": {
+        "aggregate_net": 100.4,
+        "per_symbol": {
+          "BTC-USD": {
+            "net": 47.91,
+            "trades": 7,
+            "maxdd": -37.9
+          },
+          "ETH-USD": {
+            "net": 52.49,
+            "trades": 5,
+            "maxdd": -29.41
+          }
+        }
+      },
+      "120": {
+        "aggregate_net": 96.8,
+        "per_symbol": {
+          "BTC-USD": {
+            "net": 45.81,
+            "trades": 7,
+            "maxdd": -38.5
+          },
+          "ETH-USD": {
+            "net": 50.99,
+            "trades": 5,
+            "maxdd": -30.01
+          }
+        }
+      }
+    },
+    "walkforward": {
+      "BTC-USD": {
+        "full": {
+          "net": 50.01,
+          "trades": 7,
+          "maxdd": -37.3
+        },
+        "first_half": {
+          "net": 53.16,
+          "trades": 4,
+          "maxdd": -37.3
+        },
+        "second_half": {
+          "net": -3.15,
+          "trades": 3,
+          "maxdd": -31.85
+        },
+        "last_2yr": {
+          "net": 36.6,
+          "trades": 4,
+          "maxdd": -31.85
+        },
+        "last_1yr": {
+          "net": -8.54,
+          "trades": 1,
+          "maxdd": -14.65
+        }
+      },
+      "ETH-USD": {
+        "full": {
+          "net": 53.99,
+          "trades": 5,
+          "maxdd": -28.81
+        },
+        "first_half": {
+          "net": 71.83,
+          "trades": 3,
+          "maxdd": -14.32
+        },
+        "second_half": {
+          "net": -17.84,
+          "trades": 2,
+          "maxdd": -28.81
+        },
+        "last_2yr": {
+          "net": 22.64,
+          "trades": 3,
+          "maxdd": -28.81
+        },
+        "last_1yr": {
+          "net": -12.08,
+          "trades": 1,
+          "maxdd": -13.8
+        }
+      }
+    },
+    "aggregate_grid": {
+      "15/80": 78.7,
+      "15/100": 72.5,
+      "15/120": 73.3,
+      "20/80": 118.8,
+      "20/100": 104.0,
+      "20/120": 80.8,
+      "25/80": 86.0,
+      "25/100": 125.1,
+      "25/120": 50.6
+    }
+  }
+}

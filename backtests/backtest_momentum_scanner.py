@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
+from alpaca.data.enums import DataFeed, Adjustment
 
 # Same universe as the (expanded) dip scanner
 UNIVERSE = [
@@ -40,7 +41,7 @@ UNIVERSE = [
 
 
 def fetch_daily(client, symbol, start, end):
-    req = StockBarsRequest(symbol_or_symbols=symbol, timeframe=TimeFrame.Day, start=start, end=end)
+    req = StockBarsRequest(symbol_or_symbols=symbol, timeframe=TimeFrame.Day, start=start, end=end, feed=DataFeed.IEX, adjustment=Adjustment.ALL)
     try:
         df = client.get_stock_bars(req).df
     except Exception:

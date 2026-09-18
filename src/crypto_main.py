@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from src.broker import Broker, BrokerError
 from src.logger import get_logger
 from src.risk import RiskManager
+from src.atomic_io import write_json_atomic
 from src.trend_strategy import TrendStrategy
 
 
@@ -33,12 +34,12 @@ def load_state(state_path: Path) -> dict:
 
 
 def save_state(state_path: Path, entry_prices: dict, high_water_marks: dict, trades_today: int, today_iso: str):
-    state_path.write_text(json.dumps({
+    write_json_atomic(state_path, {
         "entry_prices": entry_prices,
         "high_water_marks": high_water_marks,
         "trades_today": trades_today,
         "today": today_iso,
-    }))
+    })
 
 
 def reconcile_positions(broker, entry_prices, high_water_marks, log, log_name):

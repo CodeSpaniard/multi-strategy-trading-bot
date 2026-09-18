@@ -1,0 +1,115 @@
+{
+  "generated_utc": "2026-06-15T03:04:19Z",
+  "study": "Coinbase-specific funding distribution \u2014 calibrate live activation gate",
+  "data_source": "Coinbase International BTC/ETH-PERP funding (hourly)",
+  "caveats": [
+    "Coinbase Intl != Coinbase Advanced US (closest available)",
+    "hourly vs Coinbase Advanced US 8h \u00b10.75% cap",
+    "depth limited by API result_offset pagination",
+    "cost = 20bps round trip (taker 5bps x4 legs)"
+  ],
+  "results": {
+    "BTC": {
+      "period_start": "2023-03-22",
+      "period_end": "2026-06-15",
+      "periods_hours": 28344,
+      "approx_days": 1181.0,
+      "mean_annualized_pct_clipped": -27.78,
+      "median_annualized_pct": 6.13,
+      "pct_periods_positive": 77.3,
+      "cumulative_carry_pct_clipped": -89.89,
+      "n_bad_prints_clipped": 0,
+      "raw_min_annualized_pct": -3947.3,
+      "raw_max_annualized_pct": 1442.8,
+      "percentiles_annualized": {
+        "p10": -4.38,
+        "p25": 0.88,
+        "p50": 6.13,
+        "p75": 11.39,
+        "p90": 20.15
+      },
+      "persistence": {
+        "5pct": {
+          "pct_of_time": 57.4,
+          "n_windows": 34,
+          "median_days": 11.4,
+          "max_days": 143.8,
+          "share_of_carry_pct": -15.9
+        },
+        "10pct": {
+          "pct_of_time": 26.5,
+          "n_windows": 28,
+          "median_days": 5.4,
+          "max_days": 63.2,
+          "share_of_carry_pct": -7.9
+        },
+        "15pct": {
+          "pct_of_time": 14.3,
+          "n_windows": 11,
+          "median_days": 6.7,
+          "max_days": 51.6,
+          "share_of_carry_pct": -3.2
+        }
+      },
+      "post_cost_net_annualized_by_hold": {
+        "7d": -38.21,
+        "14d": -33.0,
+        "30d": -30.21,
+        "90d": -28.59
+      },
+      "round_trip_cost_bps": 20,
+      "calibrated_threshold_for_~2/3_carry_pct": 0.0
+    },
+    "ETH": {
+      "period_start": "2023-03-22",
+      "period_end": "2026-06-15",
+      "periods_hours": 28344,
+      "approx_days": 1181.0,
+      "mean_annualized_pct_clipped": 10.44,
+      "median_annualized_pct": 2.63,
+      "pct_periods_positive": 58.9,
+      "cumulative_carry_pct_clipped": 33.79,
+      "n_bad_prints_clipped": 0,
+      "raw_min_annualized_pct": -2985.4,
+      "raw_max_annualized_pct": 2676.2,
+      "percentiles_annualized": {
+        "p10": -7.88,
+        "p25": -2.63,
+        "p50": 2.63,
+        "p75": 7.88,
+        "p90": 18.4
+      },
+      "persistence": {
+        "5pct": {
+          "pct_of_time": 35.8,
+          "n_windows": 29,
+          "median_days": 7.2,
+          "max_days": 67.8,
+          "share_of_carry_pct": 134.1
+        },
+        "10pct": {
+          "pct_of_time": 17.5,
+          "n_windows": 15,
+          "median_days": 5.2,
+          "max_days": 61.0,
+          "share_of_carry_pct": 123.9
+        },
+        "15pct": {
+          "pct_of_time": 12.5,
+          "n_windows": 9,
+          "median_days": 14.2,
+          "max_days": 38.2,
+          "share_of_carry_pct": 118.3
+        }
+      },
+      "post_cost_net_annualized_by_hold": {
+        "7d": 0.01,
+        "14d": 5.23,
+        "30d": 8.01,
+        "90d": 9.63
+      },
+      "round_trip_cost_bps": 20,
+      "calibrated_threshold_for_~2/3_carry_pct": null
+    }
+  }
+}

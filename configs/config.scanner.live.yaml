@@ -12,7 +12,7 @@ strategy:
   trailing_stop_pct: 5.0
 
 risk:
-  daily_loss_limit_usd: 15
+  daily_realized_loss_limit_usd: 15   # net realized loss/UTC day; blocks new entries only
   max_positions: 5
 
 sizing:
@@ -27,3 +27,4 @@ sizing:
 
 loop:
   monitor_poll_seconds: 60
+  fill_timeout_s: 10

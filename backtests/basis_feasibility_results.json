@@ -1,0 +1,52 @@
+{
+  "generated_utc": "2026-06-15T01:54:08Z",
+  "study": "Basis (cash-and-carry) feasibility via OKX funding proxy",
+  "data_source": "OKX USDT-margined perpetual funding (PROXY for Coinbase USDC perp)",
+  "caveats": [
+    "OKX proxy not Coinbase",
+    "ignores liquidation/margin-call risk",
+    "ignores exact Coinbase fee schedule + USDC borrow",
+    "perpetual funding model, not dated-futures basis convergence"
+  ],
+  "lookback_days": 1100,
+  "results": {
+    "BTC-USDT-SWAP": {
+      "inst_id": "BTC-USDT-SWAP",
+      "period_start": "2026-03-12",
+      "period_end": "2026-06-15",
+      "periods": 284,
+      "span_days": 94,
+      "mean_funding_8h_pct": 0.00139,
+      "pct_periods_positive": 60.9,
+      "annualized_gross_pct": 1.52,
+      "cumulative_gross_pct": 0.39,
+      "worst_carry_drawdown_pct": -0.13,
+      "longest_negative_streak_periods": 10,
+      "longest_negative_streak_days": 3.3,
+      "assumed_cost_bps_roundtrip": 80,
+      "assumed_avg_hold_days": 90,
+      "annualized_net_pct": -1.73,
+      "net_at_2x_leverage_pct": -3.46,
+      "net_at_3x_leverage_pct": -5.18
+    },
+    "ETH-USDT-SWAP": {
+      "inst_id": "ETH-USDT-SWAP",
+      "period_start": "2026-03-12",
+      "period_end": "2026-06-15",
+      "periods": 284,
+      "span_days": 94,
+      "mean_funding_8h_pct": 0.00186,
+      "pct_periods_positive": 63.4,
+      "annualized_gross_pct": 2.04,
+      "cumulative_gross_pct": 0.53,
+      "worst_carry_drawdown_pct": -0.15,
+      "longest_negative_streak_periods": 13,
+      "longest_negative_streak_days": 4.3,
+      "assumed_cost_bps_roundtrip": 80,
+      "assumed_avg_hold_days": 90,
+      "annualized_net_pct": -1.21,
+      "net_at_2x_leverage_pct": -2.41,
+      "net_at_3x_leverage_pct": -3.62
+    }
+  }
+}

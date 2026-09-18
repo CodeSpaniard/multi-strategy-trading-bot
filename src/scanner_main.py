@@ -20,10 +20,15 @@ from dotenv import load_dotenv
 
 from src.broker import Broker, BrokerError
 from src.daily_summary import write_scanner_summary
+from src.equity_history import append_daily_equity
 from src.healthcheck import ping_healthcheck
 from src.logger import get_logger, state_path as state_path_for
-from src.notifier import notify_buy, notify_sell, notify_freeze, notify_error
+from src.notifier import notify_buy, notify_sell, notify_freeze, notify_error, notify_daily_brake
+from src.restart_tracker import track_restart_and_alert
+from src.daily_loss import daily_block, entries_blocked, resolve_limit, restore_daily, utc_today_iso
+from src.fill import realized_pnl_usd
 from src.risk import RiskManager
+from src.atomic_io import write_json_atomic
 from src.scanner import scan_for_dips
 from src.scanner_strategy import ScannerStrategy
 from src.sizer import SizerConfig, decide_size
@@ -48,7 +53,7 @@ def load_state(path: Path) -> dict:
 
 
 def save_state(path: Path, state: dict):
-    path.write_text(json.dumps(state, default=str))
+    write_json_atomic(path, state, default=str)
 
 
 def parse_equity_samples(raw) -> list:
@@ -72,12 +77,20 @@ def prune_equity_samples(samples: list, retention_days: int, now: datetime) -> l
     return [(t, v) for t, v in samples if t >= cutoff]
 
 
-def reconcile_positions(broker, positions, log, log_name):
+def reconcile_positions(broker, positions, log, log_name) -> list:
+    """Compare in-memory positions against broker's view. Mutate in-memory to match.
+
+    Returns a list of human-readable change strings; empty list means clean.
+    Adopt-on-find and drop-on-missing are silent self-healing for known cases
+    (broker manual action, restart races). Caller is expected to surface a
+    non-empty change list via Pushover so the operator notices drift.
+    """
+    changes: list = []
     try:
         alpaca_positions = broker.get_all_positions()
     except BrokerError as e:
         log.error(f"[{log_name}] RECONCILE FAILED: {e}")
-        return
+        return changes
     alpaca_symbols = set()
     for p in alpaca_positions:
         sym = p.symbol
@@ -91,11 +104,16 @@ def reconcile_positions(broker, positions, log, log_name):
                 "bounce_target_pct": 2.0,
                 "entry_date": datetime.now().isoformat(),
             }
-            log.warning(f"[{log_name}] RECONCILE: adopted {sym} entry=${entry:.2f}")
+            change = f"adopted {sym} @ ${entry:.2f}"
+            log.warning(f"[{log_name}] RECONCILE: {change}")
+            changes.append(change)
     for sym in list(positions.keys()):
         if sym not in alpaca_symbols:
-            log.info(f"[{log_name}] RECONCILE: dropping stale {sym}")
+            change = f"dropped stale {sym}"
+            log.info(f"[{log_name}] RECONCILE: {change}")
             del positions[sym]
+            changes.append(change)
+    return changes
 
 
 def main():
@@ -114,7 +132,11 @@ def main():
     mode_banner = "PAPER" if paper else "LIVE (REAL MONEY)"
     log.info(f"=== Starting dip scanner [{log_name}] in {mode_banner} mode ===")
 
-    broker = Broker(paper=paper, asset_class=cfg.get("asset_class", "equity"))
+    track_restart_and_alert(log_name)
+
+    fill_timeout_s = float(cfg.get("loop", {}).get("fill_timeout_s", 10.0))
+    broker = Broker(paper=paper, asset_class=cfg.get("asset_class", "equity"),
+                    fill_timeout_s=fill_timeout_s)
     equity = broker.account_equity()
     log.info(f"[{log_name}] Account equity: ${equity:,.2f}")
 
@@ -123,6 +145,12 @@ def main():
         trailing_stop_pct=cfg["strategy"]["trailing_stop_pct"],
     )
     max_positions = cfg["risk"]["max_positions"]
+    # The code being present is not the same as the policy being active; the
+    # config activates it. An invalid value is reported loudly rather than
+    # silently reinterpreted — but never by refusing to start, since this bot's
+    # stops are enforced by the running loop, not by resting broker orders.
+    daily_loss_limit_usd, limit_cfg_error = resolve_limit(
+        cfg["risk"].get("daily_realized_loss_limit_usd"))
     dip_threshold = cfg["scanner"]["dip_threshold_pct"]
     bounce_ratio = cfg["scanner"]["bounce_ratio"]
     min_bounce = cfg["scanner"]["min_bounce_pct"]
@@ -139,6 +167,7 @@ def main():
 
     # State
     state_path = Path(state_path_for(log_name))
+    equity_daily_path = state_path.with_name(f"{log_name}.equity_daily.jsonl")
     prior = load_state(state_path)
     positions: dict = prior.get("positions", {})
     closed_trades: int = int(prior.get("closed_trades", 0))
@@ -151,13 +180,28 @@ def main():
              f"{len(equity_samples)} equity samples, "
              f"frozen_until={frozen_until}")
 
-    reconcile_positions(broker, positions, log, log_name)
+    startup_changes = reconcile_positions(broker, positions, log, log_name)
+    if startup_changes:
+        notify_error(log_name, f"RECONCILE (startup): {len(startup_changes)} change(s) — "
+                               f"{'; '.join(startup_changes)[:200]}")
 
-    # Daily tracking
-    today_iso = datetime.now().date().isoformat()
-    closed_trades_today = 0
-    wins_today = 0
-    realized_pnl_today = 0.0
+    # Daily tracking. Restored from state when it belongs to today, so a restart
+    # cannot clear a loss limit that has already been reached.
+    today_iso = utc_today_iso()
+    realized_pnl_today, closed_trades_today, wins_today = restore_daily(prior, today_iso)
+    if closed_trades_today or realized_pnl_today:
+        log.info(f"[{log_name}] Restored today's book ({today_iso}): "
+                 f"realized={realized_pnl_today:+.2f}, closed={closed_trades_today}, wins={wins_today}")
+    if limit_cfg_error:
+        log.error(f"[{log_name}] CONFIG: {limit_cfg_error}")
+        notify_error(log_name, limit_cfg_error)
+    if daily_loss_limit_usd is None:
+        brake_desc = "UNRESOLVED config — all new entries blocked until fixed"
+    elif daily_loss_limit_usd > 0:
+        brake_desc = f"limit -${daily_loss_limit_usd:.2f}"
+    else:
+        brake_desc = "disabled"
+    log.info(f"[{log_name}] Daily realized-loss brake: {brake_desc}")
 
     # Initial equity sample
     now = datetime.now()
@@ -173,6 +217,9 @@ def main():
             "frozen_until": frozen_until.isoformat() if frozen_until else None,
             "equity_samples": serialize_equity_samples(equity_samples),
             "today": datetime.now().date().isoformat(),
+            # Same atomic snapshot as the trading state: a crash must not leave
+            # "the SELL happened" and "the day's P&L did not" disagreeing.
+            "daily": daily_block(today_iso, realized_pnl_today, closed_trades_today, wins_today),
         }
 
     save_state(state_path, snapshot_state())
@@ -238,18 +285,34 @@ def main():
 
                 if sig.action == "SELL":
                     try:
-                        broker.close_position(sym)
-                        pnl_pct = (sig.price - pos["entry_price"]) / pos["entry_price"] * 100
-                        pnl_usd = last_size_usd * pnl_pct / 100 if last_size_usd > 0 else 0.0
-                        log.info(f"[{log_name}] SELL {sym} @ ~${sig.price:.2f}")
-                        notify_sell(log_name, sym, sig.price, pnl_pct, sig.reason.split("|")[0].strip() if "|" in sig.reason else sig.reason)
-                        del positions[sym]
-                        closed_trades += 1
-                        closed_trades_today += 1
-                        realized_pnl_today += pnl_usd
-                        if pnl_pct > 0:
-                            wins_today += 1
-                        save_state(state_path, snapshot_state())
+                        fill = broker.close_position(sym)
+                        exit_px = fill.fill_price if fill.fill_price > 0 else sig.price
+                        if not fill.fully_filled:
+                            # Partial close: residual position remains at broker. Do NOT
+                            # book the trade as closed — keep state intact so strategy
+                            # re-evaluates against the residual on the next tick.
+                            log.warning(
+                                f"[{log_name}] PARTIAL SELL {sym}: filled_qty={fill.filled_qty} "
+                                f"@ ${exit_px:.2f} — keeping position in state for retry"
+                            )
+                            notify_error(
+                                log_name,
+                                f"PARTIAL CLOSE {sym}: filled_qty={fill.filled_qty} "
+                                f"(order_id={fill.order_id}); position retained"
+                            )
+                            save_state(state_path, snapshot_state())
+                        else:
+                            pnl_pct = (exit_px - pos["entry_price"]) / pos["entry_price"] * 100
+                            pnl_usd = realized_pnl_usd(pos["entry_price"], exit_px, fill.filled_qty)
+                            log.info(f"[{log_name}] SELL {sym} @ ${exit_px:.2f} (fill_qty={fill.filled_qty})")
+                            notify_sell(log_name, sym, exit_px, pnl_pct, sig.reason.split("|")[0].strip() if "|" in sig.reason else sig.reason)
+                            del positions[sym]
+                            closed_trades += 1
+                            closed_trades_today += 1
+                            realized_pnl_today += pnl_usd
+                            if pnl_pct > 0:
+                                wins_today += 1
+                            save_state(state_path, snapshot_state())
                     except BrokerError as e:
                         log.error(f"[{log_name}] SELL {sym} FAILED: {e}")
 
@@ -300,7 +363,15 @@ def main():
 
                 size_usd = decision.per_trade_usd
 
-                if size_usd <= 0:
+                if entries_blocked(realized_pnl_today, daily_loss_limit_usd):
+                    limit_desc = ("UNRESOLVED config" if daily_loss_limit_usd is None
+                                  else f"-{daily_loss_limit_usd:.2f}")
+                    log.warning(
+                        f"[{log_name}] DAILY LOSS BRAKE: realized {realized_pnl_today:+.2f} today "
+                        f"(limit {limit_desc}) — no new entries. Exits still active."
+                    )
+                    notify_daily_brake(log_name, realized_pnl_today, daily_loss_limit_usd)
+                elif size_usd <= 0:
                     log.warning(f"[{log_name}] Sizer returned $0 — no buys this scan.")
                 else:
                     slots = max_positions - len(positions)
@@ -309,16 +380,20 @@ def main():
                         if c.symbol in positions:
                             continue
                         try:
-                            broker.buy_notional(c.symbol, size_usd)
+                            fill = broker.buy_notional(c.symbol, size_usd)
+                            entry_px = fill.fill_price if fill.fill_price > 0 else c.close_price
                             positions[c.symbol] = {
-                                "entry_price": c.close_price,
-                                "high_water": c.close_price,
+                                "entry_price": entry_px,
+                                "high_water": entry_px,
                                 "bounce_target_pct": c.bounce_target_pct,
                                 "entry_date": now.isoformat(),
+                                "entry_order_id": fill.order_id,
                             }
                             last_size_usd = size_usd
-                            log.info(f"[{log_name}] BUY {c.symbol} ${size_usd:.2f} @ ~${c.close_price:.2f} | target +{c.bounce_target_pct:.1f}%")
-                            notify_buy(log_name, c.symbol, size_usd, c.close_price)
+                            log.info(f"[{log_name}] BUY {c.symbol} ${size_usd:.2f} @ ${entry_px:.2f} (fill_qty={fill.filled_qty}) | target +{c.bounce_target_pct:.1f}%")
+                            notify_buy(log_name, c.symbol, size_usd, entry_px)
+                            if not fill.fully_filled:
+                                notify_error(log_name, f"PARTIAL BUY {c.symbol}: filled_qty={fill.filled_qty} of ${size_usd} (order_id={fill.order_id})")
                             save_state(state_path, snapshot_state())
                         except BrokerError as e:
                             log.error(f"[{log_name}] BUY {c.symbol} FAILED: {e}")
@@ -338,13 +413,38 @@ def main():
                     realized_pnl_today=realized_pnl_today,
                 )
 
+                # Daily reconcile: catches drift not preventable by Phase A
+                # (manual broker action, restart races, unknown unknowns).
+                eod_changes = reconcile_positions(broker, positions, log, log_name)
+                if eod_changes:
+                    notify_error(log_name, f"RECONCILE (EOD): {len(eod_changes)} change(s) — "
+                                           f"{'; '.join(eod_changes)[:200]}")
+                    save_state(state_path, snapshot_state())
+
+                # Leverage-gate Step 1: durable end-of-day equity history (separate from the
+                # ~14d equity_samples) for the future 60-day equity Sharpe + DD-recovery.
+                # Placed AFTER the EOD reconcile so open_positions reflects post-reconcile
+                # state (per Codex review). current_equity is broker-reported, reconcile-independent.
+                try:
+                    if append_daily_equity(
+                        str(equity_daily_path), datetime.now().strftime("%Y-%m-%d"), log_name,
+                        current_equity, closed_trades=closed_trades,
+                        open_positions=len(positions), realized_pnl_today=realized_pnl_today,
+                    ):
+                        log.info(f"[{log_name}] daily equity mark persisted: ${current_equity:.2f}")
+                except Exception as e:
+                    log.warning(f"[{log_name}] daily-equity persist failed: {e}")
+
             # Rollover daily counters at date boundary
-            current_date_iso = datetime.now().date().isoformat()
+            current_date_iso = utc_today_iso()
             if current_date_iso != today_iso:
                 today_iso = current_date_iso
                 closed_trades_today = 0
                 wins_today = 0
                 realized_pnl_today = 0.0
+                # Persist at once: a restart between rollover and the next natural
+                # save must not restore yesterday's figure against today.
+                save_state(state_path, snapshot_state())
 
             time.sleep(poll)
         except BrokerError as e:

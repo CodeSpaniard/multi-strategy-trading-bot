@@ -1,0 +1,48 @@
+{
+  "generated_utc": "2026-06-09T16:09:51Z",
+  "window_start": "2023-06-06",
+  "window_end": "2026-06-09",
+  "years": 3.01,
+  "rows": [
+    {
+      "name": "Buy & hold BTC-USD",
+      "ret_pct": 123.76,
+      "maxdd_pct": -51.21
+    },
+    {
+      "name": "  Trend strategy BTC-USD (active)",
+      "ret_pct": 50.01,
+      "maxdd_pct": -37.3
+    },
+    {
+      "name": "Buy & hold ETH-USD",
+      "ret_pct": -13.68,
+      "maxdd_pct": -67.53
+    },
+    {
+      "name": "  Trend strategy ETH-USD (active)",
+      "ret_pct": 53.99,
+      "maxdd_pct": -28.81
+    },
+    {
+      "name": "Buy & hold S&P500 (SPY, ex-div)",
+      "ret_pct": 72.71,
+      "maxdd_pct": -18.98
+    },
+    {
+      "name": "HYSA @ 4.0% APY (risk-free)",
+      "ret_pct": 12.53,
+      "maxdd_pct": 0.0
+    },
+    {
+      "name": "HYSA @ 4.5% APY (risk-free)",
+      "ret_pct": 14.16,
+      "maxdd_pct": 0.0
+    },
+    {
+      "name": "HYSA @ 5.0% APY (risk-free)",
+      "ret_pct": 15.81,
+      "maxdd_pct": 0.0
+    }
+  ]
+}

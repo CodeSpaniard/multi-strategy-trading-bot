@@ -11,6 +11,7 @@ worst rolling 30/60/90-day drawdown, worst single trade, per-symbol breakdown.
 Usage: python3 backtest_crypto_trend.py [--days 1100]
 """
 import argparse
+import json
 import os
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -144,6 +145,41 @@ def max_drawdown(equity_series):
     return (eq - peak).min()
 
 
+def summarize(symbol, trades, eq_series):
+    """Build a JSON-serializable summary dict for a symbol's backtest."""
+    if not trades:
+        return {"symbol": symbol, "trades": 0}
+    net = [t["net_pnl"] for t in trades]
+    wins = [p for p in net if p > 0]
+    losses = [p for p in net if p <= 0]
+    reasons = {}
+    for t in trades:
+        reasons[t["reason"]] = reasons.get(t["reason"], 0) + 1
+    return {
+        "symbol": symbol,
+        "period_start": str(eq_series.index[0].date()),
+        "period_end": str(eq_series.index[-1].date()),
+        "trades": len(trades),
+        "wins": len(wins),
+        "losses": len(losses),
+        "win_rate_pct": round(len(wins) / len(trades) * 100, 1),
+        "total_net_pnl_pct": round(sum(net), 2),
+        "best_trade_pct": round(max(net), 2),
+        "worst_trade_pct": round(min(net), 2),
+        "max_drawdown_pct": round(max_drawdown(eq_series), 2),
+        "worst_30d_dd_pct": round(rolling_drawdown(eq_series, 30), 2),
+        "worst_60d_dd_pct": round(rolling_drawdown(eq_series, 60), 2),
+        "worst_90d_dd_pct": round(rolling_drawdown(eq_series, 90), 2),
+        "exit_reasons": reasons,
+        "trade_log": [
+            {"entry_date": str(t["entry_date"].date()), "exit_date": str(t["exit_date"].date()),
+             "entry_price": round(t["entry_price"], 2), "exit_price": round(t["exit_price"], 2),
+             "net_pnl_pct": round(t["net_pnl"], 2), "reason": t["reason"]}
+            for t in trades
+        ],
+    }
+
+
 def report(symbol, trades, eq_series):
     print(f"\n{'=' * 70}")
     print(f"  {symbol}  MA20/100 daily crossover  (TP=40%, SL=15%, trail=12%, 60bps)")
@@ -179,18 +215,35 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--days", type=int, default=1100, help="lookback in days (~3yr default)")
     parser.add_argument("--symbols", nargs="+", default=["BTC-USD", "ETH-USD"])
+    parser.add_argument("--save", default="backtests/crypto_trend_results.json",
+                        help="path to write JSON results (set empty to skip)")
     args = parser.parse_args()
 
     load_dotenv(".env.coinbase", override=True)
     client = RESTClient(api_key=os.environ["COINBASE_API_KEY"],
                         api_secret=os.environ["COINBASE_API_SECRET"])
 
+    summaries = {}
     for sym in args.symbols:
         print(f"Fetching {args.days} daily bars for {sym}...", flush=True)
         df = fetch_daily_coinbase(client, sym, args.days)
         print(f"  Got {len(df)} bars from {df.index[0].date()} to {df.index[-1].date()}", flush=True)
         trades, eq = simulate(df)
         report(sym, trades, eq)
+        summaries[sym] = summarize(sym, trades, eq)
+
+    if args.save:
+        out = {
+            "generated_utc": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+            "strategy": "MA20/100 daily golden-cross trend",
+            "params": {"ma_fast": 20, "ma_slow": 100, "take_profit_pct": 40.0,
+                       "stop_loss_pct": 15.0, "trailing_stop_pct": 12.0, "cost_bps": 60},
+            "lookback_days": args.days,
+            "results": summaries,
+        }
+        with open(args.save, "w") as f:
+            json.dump(out, f, indent=2)
+        print(f"\nSaved results → {args.save}")
 
 
 if __name__ == "__main__":

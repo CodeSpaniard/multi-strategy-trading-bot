@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
+from alpaca.data.enums import DataFeed, Adjustment
 
 UNIVERSE = [
     "AAPL", "MSFT", "AMZN", "NVDA", "GOOGL", "META", "TSLA", "BRK.B", "JPM", "V",
@@ -31,10 +32,18 @@ UNIVERSE = [
 
 
 def fetch_daily(client, symbol, start, end):
-    req = StockBarsRequest(symbol_or_symbols=symbol, timeframe=TimeFrame.Day, start=start, end=end)
+    # Free tier rejects SIP; live trades on IEX. Match live so the backtest
+    # returns data instead of silently fetching nothing.
+    # adjustment=ALL → split- and dividend-adjusted bars; without this, a split
+    # (e.g. NVDA 10:1) shows as a spurious ~-90% one-day "crash" and corrupts results.
+    req = StockBarsRequest(symbol_or_symbols=symbol, timeframe=TimeFrame.Day, start=start, end=end,
+                           feed=DataFeed.IEX, adjustment=Adjustment.ALL)
     try:
         df = client.get_stock_bars(req).df
-    except Exception:
+    except Exception as e:
+        # Surface the reason instead of silently dropping the symbol — a feed/
+        # credential failure should be visible, not disguised as "no data".
+        print(f"  WARN {symbol}: bar fetch failed: {type(e).__name__}: {e}", flush=True)
         return None
     if df.empty:
         return None
@@ -51,18 +60,31 @@ def run_backtest(start, end,
                  trailing_stop_pct=5.0,
                  max_positions=5,
                  cost_bps=10,             # equity round-trip cost ~10 bps
+                 entry_weekdays=None,     # None=all days; else set of weekday ints (Mon=0..Fri=4)
+                 preloaded_data=None,     # pass fetched data to reuse across variants
                  ):
-    load_dotenv(".env.paper", override=True)
-    client = StockHistoricalDataClient(os.environ["ALPACA_API_KEY"], os.environ["ALPACA_SECRET_KEY"])
+    if preloaded_data is not None:
+        all_data = preloaded_data
+    else:
+        load_dotenv(".env.paper", override=True)
+        client = StockHistoricalDataClient(os.environ["ALPACA_API_KEY"], os.environ["ALPACA_SECRET_KEY"])
 
-    # Fetch all data upfront
-    print(f"Fetching daily bars for {len(UNIVERSE)} stocks...", flush=True)
-    all_data = {}
-    for sym in UNIVERSE:
-        df = fetch_daily(client, sym, start, end)
-        if df is not None and len(df) > 20:
-            all_data[sym] = df
-    print(f"  Got data for {len(all_data)} stocks.", flush=True)
+        # Fetch all data upfront
+        print(f"Fetching daily bars for {len(UNIVERSE)} stocks...", flush=True)
+        all_data = {}
+        for sym in UNIVERSE:
+            df = fetch_daily(client, sym, start, end)
+            if df is not None and len(df) > 20:
+                all_data[sym] = df
+        print(f"  Got data for {len(all_data)}/{len(UNIVERSE)} stocks.", flush=True)
+        # Fail fast on a coverage collapse rather than reporting misleading results
+        # from a near-empty universe (e.g. a feed/credential regression).
+        min_coverage = max(20, len(UNIVERSE) // 2)
+        if len(all_data) < min_coverage:
+            raise RuntimeError(
+                f"Data coverage too low: {len(all_data)}/{len(UNIVERSE)} symbols loaded "
+                f"(need >= {min_coverage}). Likely a data-feed or credential problem — "
+                f"aborting instead of producing a misleading backtest.")
 
     # Build a date index from any stock
     sample = next(iter(all_data.values()))
@@ -121,6 +143,8 @@ def run_backtest(start, end,
                 del open_positions[sym]
 
         # 2. Scan for new dips (only if we have capacity)
+        if entry_weekdays is not None and today.weekday() not in entry_weekdays:
+            continue  # entry-day filter: no NEW entries this weekday (exits already handled above)
         if len(open_positions) >= max_positions:
             continue
 

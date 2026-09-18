@@ -23,10 +23,15 @@ import urllib.request
 log = logging.getLogger(__name__)
 
 
-def notify(title: str, message: str, subtitle: str = "") -> None:
-    """Post a notification. Prefers Pushover if credentials are set, else macOS osascript.
-    Failures are logged, not raised."""
-    # --- Pushover branch ---
+def notify(title: str, message: str, subtitle: str = "") -> bool:
+    """Post a notification. Returns True only on confirmed Pushover (HTTPS)
+    delivery. The osascript fallback is best-effort local-only and does NOT
+    count as remote delivery for the return value — callers that depend on
+    durable alert delivery (e.g. one-shot milestone alerts) need that
+    distinction to avoid silently consuming the alert when Pushover is down.
+
+    Existing callers that don't check the return value (notify_buy/sell/freeze/error)
+    are unaffected — semantics for them remain swallow-and-continue."""
     user_key = os.getenv("PUSHOVER_USER_KEY")
     api_token = os.getenv("PUSHOVER_API_TOKEN")
 
@@ -49,12 +54,11 @@ def notify(title: str, message: str, subtitle: str = "") -> None:
                 ),
                 timeout=5,
             ).read()
-            return
+            return True
         except Exception as e:
             log.debug(f"pushover notify failed (non-fatal): {e}")
 
-    # --- macOS osascript fallback ---
-    # AppleScript expects double-quoted strings with internal quotes escaped.
+    # --- macOS osascript fallback (local only; does not signal delivery) ---
     msg = message.replace('"', "'")
     ttl = title.replace('"', "'")
     sub = subtitle.replace('"', "'") if subtitle else ""
@@ -72,6 +76,7 @@ def notify(title: str, message: str, subtitle: str = "") -> None:
         )
     except Exception as e:
         log.debug(f"notify failed (non-fatal): {e}")
+    return False
 
 
 def notify_buy(bot: str, symbol: str, usd: float, price: float) -> None:
@@ -96,8 +101,30 @@ def notify_freeze(bot: str, dd_pct: float, until: str) -> None:
     )
 
 
+def notify_daily_brake(bot: str, realized_pnl: float, limit_usd) -> None:
+    # limit_usd is None when the configured limit could not be resolved; the
+    # brake is active in that case, so this must not raise on formatting.
+    limit_desc = "UNRESOLVED config" if limit_usd is None else f"-{limit_usd:.2f}"
+    notify(
+        title=f"[{bot}] DAILY LOSS BRAKE",
+        message=f"Realized {realized_pnl:+.2f} today (limit {limit_desc}) — "
+                f"no new entries. Exits and stops continue.",
+    )
+
+
 def notify_error(bot: str, message: str) -> None:
     notify(
         title=f"[{bot}] ERROR",
         message=message[:120],  # truncate long errors
     )
+
+
+def notify_milestone(bot: str, label: str, message: str) -> bool:
+    """Positive operational event — not a trade, not an error. e.g. a capital
+    threshold being reached that unlocks a deferred strategy.
+
+    Returns True only on confirmed remote delivery. Callers that gate state on
+    delivery (one-shot milestones) MUST check the return value before recording
+    the milestone as fired, or a transient Pushover outage will silently
+    consume the alert."""
+    return notify(title=f"[{bot}] {label}", message=message[:200])

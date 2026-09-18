@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
+from alpaca.data.enums import DataFeed
 
 
 @dataclass
@@ -31,7 +32,7 @@ class Trade:
 
 
 def fetch_bars(client, symbol, start, end):
-    req = StockBarsRequest(symbol_or_symbols=symbol, timeframe=TimeFrame.Minute, start=start, end=end)
+    req = StockBarsRequest(symbol_or_symbols=symbol, timeframe=TimeFrame.Minute, start=start, end=end, feed=DataFeed.IEX)
     df = client.get_stock_bars(req).df
     if df.empty: return None
     if "symbol" in df.index.names: df = df.xs(symbol, level="symbol")

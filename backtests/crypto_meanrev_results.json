@@ -1,0 +1,184 @@
+{
+  "generated_utc": "2026-06-10T19:13:31Z",
+  "params": {
+    "bounce_target": 8.0,
+    "hard_stop": 15.0,
+    "trailing": 10.0,
+    "max_hold_days": 14,
+    "cost_bps": 60
+  },
+  "results": {
+    "BTC-USD": {
+      "dip4.0_maNone": {
+        "trades": 26,
+        "win_rate_pct": 50.0,
+        "total_net_pnl_pct": 8.33,
+        "avg_per_trade_pct": 0.321,
+        "best_pct": 11.87,
+        "worst_pct": -12.63,
+        "max_drawdown_pct": -43.4,
+        "avg_hold_days": 10.9,
+        "return_over_maxdd": 0.19
+      },
+      "dip4.0_ma200": {
+        "trades": 15,
+        "win_rate_pct": 46.7,
+        "total_net_pnl_pct": -4.3,
+        "avg_per_trade_pct": -0.287,
+        "best_pct": 9.04,
+        "worst_pct": -12.63,
+        "max_drawdown_pct": -38.26,
+        "avg_hold_days": 11.2,
+        "return_over_maxdd": -0.11
+      },
+      "dip6.0_maNone": {
+        "trades": 11,
+        "win_rate_pct": 45.5,
+        "total_net_pnl_pct": 2.04,
+        "avg_per_trade_pct": 0.185,
+        "best_pct": 13.61,
+        "worst_pct": -20.76,
+        "max_drawdown_pct": -35.68,
+        "avg_hold_days": 8.5,
+        "return_over_maxdd": 0.06
+      },
+      "dip6.0_ma200": {
+        "trades": 6,
+        "win_rate_pct": 50.0,
+        "total_net_pnl_pct": 12.21,
+        "avg_per_trade_pct": 2.035,
+        "best_pct": 8.81,
+        "worst_pct": -6.94,
+        "max_drawdown_pct": -17.86,
+        "avg_hold_days": 9.5,
+        "return_over_maxdd": 0.68
+      },
+      "dip8.0_maNone": {
+        "trades": 3,
+        "win_rate_pct": 66.7,
+        "total_net_pnl_pct": 13.8,
+        "avg_per_trade_pct": 4.599,
+        "best_pct": 11.72,
+        "worst_pct": -6.94,
+        "max_drawdown_pct": -12.1,
+        "avg_hold_days": 2.7,
+        "return_over_maxdd": 1.14
+      },
+      "dip8.0_ma200": {
+        "trades": 2,
+        "win_rate_pct": 50.0,
+        "total_net_pnl_pct": 2.08,
+        "avg_per_trade_pct": 1.038,
+        "best_pct": 9.02,
+        "worst_pct": -6.94,
+        "max_drawdown_pct": -12.1,
+        "avg_hold_days": 3.5,
+        "return_over_maxdd": 0.17
+      },
+      "dip10.0_maNone": {
+        "trades": 1,
+        "win_rate_pct": 100.0,
+        "total_net_pnl_pct": 11.72,
+        "avg_per_trade_pct": 11.721,
+        "best_pct": 11.72,
+        "worst_pct": 11.72,
+        "max_drawdown_pct": 0.0,
+        "avg_hold_days": 1.0,
+        "return_over_maxdd": null
+      },
+      "dip10.0_ma200": {
+        "trades": 0
+      }
+    },
+    "ETH-USD": {
+      "dip4.0_maNone": {
+        "trades": 50,
+        "win_rate_pct": 44.0,
+        "total_net_pnl_pct": -62.68,
+        "avg_per_trade_pct": -1.254,
+        "best_pct": 16.33,
+        "worst_pct": -17.29,
+        "max_drawdown_pct": -99.72,
+        "avg_hold_days": 8.6,
+        "return_over_maxdd": -0.63
+      },
+      "dip4.0_ma200": {
+        "trades": 20,
+        "win_rate_pct": 35.0,
+        "total_net_pnl_pct": -38.13,
+        "avg_per_trade_pct": -1.906,
+        "best_pct": 16.33,
+        "worst_pct": -14.67,
+        "max_drawdown_pct": -59.16,
+        "avg_hold_days": 8.4,
+        "return_over_maxdd": -0.64
+      },
+      "dip6.0_maNone": {
+        "trades": 25,
+        "win_rate_pct": 36.0,
+        "total_net_pnl_pct": -32.22,
+        "avg_per_trade_pct": -1.289,
+        "best_pct": 16.33,
+        "worst_pct": -19.54,
+        "max_drawdown_pct": -80.55,
+        "avg_hold_days": 8.3,
+        "return_over_maxdd": -0.4
+      },
+      "dip6.0_ma200": {
+        "trades": 11,
+        "win_rate_pct": 45.5,
+        "total_net_pnl_pct": 22.21,
+        "avg_per_trade_pct": 2.019,
+        "best_pct": 16.33,
+        "worst_pct": -10.96,
+        "max_drawdown_pct": -25.0,
+        "avg_hold_days": 8.7,
+        "return_over_maxdd": 0.89
+      },
+      "dip8.0_maNone": {
+        "trades": 13,
+        "win_rate_pct": 46.2,
+        "total_net_pnl_pct": -1.26,
+        "avg_per_trade_pct": -0.097,
+        "best_pct": 12.5,
+        "worst_pct": -13.8,
+        "max_drawdown_pct": -47.75,
+        "avg_hold_days": 6.5,
+        "return_over_maxdd": -0.03
+      },
+      "dip8.0_ma200": {
+        "trades": 4,
+        "win_rate_pct": 50.0,
+        "total_net_pnl_pct": 14.15,
+        "avg_per_trade_pct": 3.538,
+        "best_pct": 10.79,
+        "worst_pct": -2.23,
+        "max_drawdown_pct": -9.59,
+        "avg_hold_days": 7.8,
+        "return_over_maxdd": 1.48
+      },
+      "dip10.0_maNone": {
+        "trades": 7,
+        "win_rate_pct": 57.1,
+        "total_net_pnl_pct": 7.62,
+        "avg_per_trade_pct": 1.089,
+        "best_pct": 12.5,
+        "worst_pct": -13.8,
+        "max_drawdown_pct": -32.24,
+        "avg_hold_days": 4.9,
+        "return_over_maxdd": 0.24
+      },
+      "dip10.0_ma200": {
+        "trades": 2,
+        "win_rate_pct": 100.0,
+        "total_net_pnl_pct": 18.54,
+        "avg_per_trade_pct": 9.269,
+        "best_pct": 10.79,
+        "worst_pct": 7.74,
+        "max_drawdown_pct": -2.23,
+        "avg_hold_days": 1.5,
+        "return_over_maxdd": 8.31
+      }
+    }
+  }
+}

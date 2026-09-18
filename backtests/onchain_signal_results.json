@@ -1,0 +1,70 @@
+{
+  "generated_utc": "2026-06-15T02:15:32Z",
+  "study": "LEARNING: on-chain active-address regime vs forward BTC return",
+  "data_source": "Coinbase spot + blockchain.info n-unique-addresses (free)",
+  "horizon_days": 30,
+  "regime_def": "active-addr 7d MA > 30d MA",
+  "caveats": [
+    "overlapping forward windows inflate significance",
+    "one asset / in-sample",
+    "correlation not causation",
+    "teaching demo, not tradeable evidence"
+  ],
+  "expansion": {
+    "days": 445,
+    "mean_fwd_ret_pct": 3.19,
+    "median_fwd_ret_pct": 1.57,
+    "pct_positive": 53.9
+  },
+  "contraction": {
+    "days": 587,
+    "mean_fwd_ret_pct": 3.84,
+    "median_fwd_ret_pct": 2.13,
+    "pct_positive": 59.1
+  },
+  "spread_mean_fwd_pct": -0.65,
+  "trades_tagged": [
+    {
+      "entry": "2023-10-20",
+      "net_pnl_pct": 40.84,
+      "reason": "take-profit",
+      "onchain_regime": "contraction"
+    },
+    {
+      "entry": "2024-05-21",
+      "net_pnl_pct": -14.69,
+      "reason": "trailing-stop",
+      "onchain_regime": "contraction"
+    },
+    {
+      "entry": "2024-07-30",
+      "net_pnl_pct": -12.75,
+      "reason": "trailing-stop",
+      "onchain_regime": "expansion"
+    },
+    {
+      "entry": "2024-09-28",
+      "net_pnl_pct": 39.75,
+      "reason": "take-profit",
+      "onchain_regime": "contraction"
+    },
+    {
+      "entry": "2025-05-03",
+      "net_pnl_pct": 12.46,
+      "reason": "trailing-stop",
+      "onchain_regime": "expansion"
+    },
+    {
+      "entry": "2025-09-19",
+      "net_pnl_pct": -7.08,
+      "reason": "trailing-stop",
+      "onchain_regime": "expansion"
+    },
+    {
+      "entry": "2026-04-24",
+      "net_pnl_pct": -8.54,
+      "reason": "trailing-stop",
+      "onchain_regime": "contraction"
+    }
+  ]
+}

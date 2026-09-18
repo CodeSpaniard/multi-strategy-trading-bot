@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
+from alpaca.data.enums import DataFeed
 
 from src.strategy import MomentumStrategy
 
@@ -84,6 +85,7 @@ def fetch_bars(client, symbol: str, start: datetime, end: datetime):
         timeframe=TimeFrame.Minute,
         start=start,
         end=end,
+        feed=DataFeed.IEX,
     )
     df = client.get_stock_bars(req).df
     if df.empty:

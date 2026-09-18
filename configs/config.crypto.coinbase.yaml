@@ -15,7 +15,6 @@ strategy:
   trailing_stop_pct: 12.0
 
 risk:
-  daily_loss_limit_usd: 15
   max_trades_per_day: 999
 
 sizing:
@@ -30,3 +29,13 @@ sizing:
 
 loop:
   poll_seconds: 3600   # check once per hour
+  fill_timeout_s: 10
+
+# Sprint 3 capital-unlock gate: fires one Pushover the first time Coinbase
+# equity crosses the threshold above which basis trade economics make sense
+# (see project memory `project_basis_trade`). Below→above transition only;
+# re-arms only if equity falls back below threshold × rearm_ratio (small
+# hysteresis to avoid noise spam when equity sits near the line).
+basis_trade:
+  unlock_threshold_usd: 2000
+  rearm_ratio: 0.95

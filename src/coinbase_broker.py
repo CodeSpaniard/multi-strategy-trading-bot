@@ -3,15 +3,21 @@ Same interface pattern as Broker class — TrendStrategy doesn't care which brok
 """
 import logging
 import os
+import time
 import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal, ROUND_DOWN
 from coinbase.rest import RESTClient
 
+from src.fill import FillResult
+
 log = logging.getLogger(__name__)
 
 DEFAULT_BASE_INCREMENT = "0.00000001"
 DEFAULT_QUOTE_INCREMENT = "0.01"
+
+# Coinbase order status terminal-fail values (per Advanced Trade API)
+_TERMINAL_FAIL_STATUSES = ("CANCELLED", "EXPIRED", "FAILED")
 
 
 class CoinbaseBrokerError(Exception):
@@ -19,10 +25,11 @@ class CoinbaseBrokerError(Exception):
 
 
 class CoinbaseBroker:
-    def __init__(self):
+    def __init__(self, fill_timeout_s: float = 10.0):
         api_key = os.environ["COINBASE_API_KEY"]
         api_secret = os.environ["COINBASE_API_SECRET"]
         self.client = RESTClient(api_key=api_key, api_secret=api_secret)
+        self.fill_timeout_s = fill_timeout_s
         self._product_cache: dict = {}
 
     def _product_increments(self, product_id: str) -> tuple:
@@ -51,6 +58,77 @@ class CoinbaseBroker:
             return
         err = getattr(order, "error_response", None) or getattr(order, "failure_reason", "<no detail>")
         raise CoinbaseBrokerError(f"{action} {product_id} rejected by Coinbase: {err}")
+
+    @staticmethod
+    def _extract_order_id(order) -> str:
+        """Pull order_id from the success_response envelope, duck-typing dict or attr forms."""
+        succ = getattr(order, "success_response", None)
+        if succ is None and isinstance(order, dict):
+            succ = order.get("success_response")
+        if succ is None:
+            return ""
+        if isinstance(succ, dict):
+            return str(succ.get("order_id", ""))
+        return str(getattr(succ, "order_id", "") or "")
+
+    @staticmethod
+    def _field(obj, name, default=None):
+        """Read `name` from obj whether obj is a dict or has attrs."""
+        if obj is None:
+            return default
+        if isinstance(obj, dict):
+            return obj.get(name, default)
+        return getattr(obj, name, default)
+
+    def _wait_for_fill(self, order, action: str, product_id: str) -> FillResult:
+        """Poll order status until terminal or fill_timeout_s elapses.
+
+        Terminal outcomes:
+          FILLED                                  → FillResult(fully_filled=True)
+          CANCELLED / EXPIRED / FAILED            → CoinbaseBrokerError
+          Partial fill present at timeout         → FillResult(fully_filled=False) + WARN
+          Still pending with no fill at timeout   → CoinbaseBrokerError("fill timeout")
+        """
+        order_id = self._extract_order_id(order)
+        if not order_id:
+            raise CoinbaseBrokerError(f"{action} {product_id}: no order_id in success_response; cannot verify fill")
+
+        poll_interval_s = 1.0
+        deadline = time.monotonic() + self.fill_timeout_s
+
+        status = None
+        filled_size = 0.0
+        avg_price = 0.0
+        while True:
+            try:
+                resp = self.client.get_order(order_id=order_id)
+            except Exception as e:
+                raise CoinbaseBrokerError(f"{action} {product_id} poll get_order failed: {e}") from e
+            o = self._field(resp, "order", resp)
+            status = self._field(o, "status")
+            filled_size = float(self._field(o, "filled_size", 0) or 0)
+            avg_price = float(self._field(o, "average_filled_price", 0) or 0)
+
+            if status == "FILLED":
+                return FillResult(fill_price=avg_price, filled_qty=filled_size,
+                                  fully_filled=True, order_id=order_id)
+            if status in _TERMINAL_FAIL_STATUSES:
+                raise CoinbaseBrokerError(
+                    f"{action} {product_id} ended in status={status} (order_id={order_id})"
+                )
+            if time.monotonic() >= deadline:
+                if filled_size > 0:
+                    log.warning(
+                        f"{action} {product_id} PARTIAL FILL at timeout: "
+                        f"filled_size={filled_size} px={avg_price} status={status} (order_id={order_id})"
+                    )
+                    return FillResult(fill_price=avg_price, filled_qty=filled_size,
+                                      fully_filled=False, order_id=order_id)
+                raise CoinbaseBrokerError(
+                    f"{action} {product_id} fill timeout after {self.fill_timeout_s}s "
+                    f"(status={status}, order_id={order_id})"
+                )
+            time.sleep(poll_interval_s)
 
     def account_equity(self) -> float:
         """Get total portfolio value in USD."""
@@ -136,7 +214,7 @@ class CoinbaseBroker:
         except Exception as e:
             raise CoinbaseBrokerError(f"daily_bars({symbol}) failed: {e}") from e
 
-    def buy_notional(self, symbol: str, usd: float):
+    def buy_notional(self, symbol: str, usd: float) -> FillResult:
         product_id = self._to_product_id(symbol)
         _, quote_inc = self._product_increments(product_id)
         quote_size = self._truncate_to_increment(usd, quote_inc)
@@ -150,9 +228,9 @@ class CoinbaseBroker:
             raise CoinbaseBrokerError(f"buy_notional({symbol}, ${usd}) failed: {e}") from e
         self._check_order_success(order, "BUY", product_id)
         log.info(f"Coinbase BUY order accepted: {product_id} quote_size={quote_size}")
-        return order
+        return self._wait_for_fill(order, "BUY", product_id)
 
-    def sell_all(self, symbol: str):
+    def sell_all(self, symbol: str) -> FillResult | None:
         qty = self.get_position_qty(symbol)
         if qty <= 0:
             log.warning(f"sell_all({symbol}): no position to sell")
@@ -174,7 +252,7 @@ class CoinbaseBroker:
             raise CoinbaseBrokerError(f"sell_all({symbol}) failed: {e}") from e
         self._check_order_success(order, "SELL", product_id)
         log.info(f"Coinbase SELL order accepted: {product_id} base_size={base_size} (raw qty {qty})")
-        return order
+        return self._wait_for_fill(order, "SELL", product_id)
 
     def market_is_open(self) -> bool:
         return True
